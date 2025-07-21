@@ -49,24 +49,32 @@ jobs:
       run: |
         mkdir -p release
         
-        # Copy ROM files
-        cp pokefirered.gba release/
-        cp pokeleafgreen.gba release/
-        cp pokefirered_rev1.gba release/
-        cp pokeleafgreen_rev1.gba release/
-        cp pokefirered_modern.gba release/
-        cp pokeleafgreen_modern.gba release/
-        cp pokefirered_rev1_modern.gba release/
-        cp pokeleafgreen_rev1_modern.gba release/
+        # Verify ROM files were built successfully (but don't include in release)
+        echo "Verifying ROM builds..."
+        for rom in pokefirered.gba pokeleafgreen.gba pokefirered_rev1.gba pokeleafgreen_rev1.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
+          if [ -f "$rom" ]; then
+            echo "✅ $rom built successfully ($(du -h "$rom" | cut -f1))"
+          else
+            echo "❌ $rom build failed"
+            exit 1
+          fi
+        done
         
         # Copy documentation
         cp README.md release/
         cp INSTALL.md release/ 2>/dev/null || echo "INSTALL.md not found, skipping"
         cp ENHANCEMENTS.md release/ 2>/dev/null || echo "ENHANCEMENTS.md not found, skipping"
         
-        # Create checksums
-        cd release
-        sha256sum *.gba > checksums.sha256
+        # Create build verification info
+        echo "ROM Build Verification - $(date)" > release/BUILD_VERIFICATION.md
+        echo "==============================" >> release/BUILD_VERIFICATION.md
+        echo "" >> release/BUILD_VERIFICATION.md
+        echo "All ROM variants built successfully:" >> release/BUILD_VERIFICATION.md
+        for rom in pokefirered.gba pokeleafgreen.gba pokefirered_rev1.gba pokeleafgreen_rev1.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
+          if [ -f "$rom" ]; then
+            echo "- $rom: $(sha256sum "$rom" | cut -d' ' -f1)" >> release/BUILD_VERIFICATION.md
+          fi
+        done
         
     - name: Extract release notes
       id: extract_notes
@@ -79,39 +87,49 @@ jobs:
         cat > release_notes.md << 'EOF'
         ## Pokemon FireRed - Personal Quality of Life Edition ${{ github.ref_name }}
         
-        ### ROM Files Included:
-        - `pokefirered.gba` - FireRed (original compiler)
-        - `pokeleafgreen.gba` - LeafGreen (original compiler)
-        - `pokefirered_rev1.gba` - FireRed Revision 1 (original compiler)
-        - `pokeleafgreen_rev1.gba` - LeafGreen Revision 1 (original compiler)
-        - `pokefirered_modern.gba` - FireRed (modern GCC)
-        - `pokeleafgreen_modern.gba` - LeafGreen (modern GCC)
-        - `pokefirered_rev1_modern.gba` - FireRed Revision 1 (modern GCC)
-        - `pokeleafgreen_rev1_modern.gba` - LeafGreen Revision 1 (modern GCC)
+        ### 🎮 Source Code Release
+        This release contains the complete source code for building Pokemon FireRed/LeafGreen ROMs with quality of life improvements.
         
-        ### Verification
-        Use the included `checksums.sha256` file to verify ROM integrity:
-        ```bash
-        sha256sum -c checksums.sha256
-        ```
+        ### 🔨 How to Build
+        1. Follow the setup instructions in `INSTALL.md`
+        2. Run one of these commands:
+           ```bash
+           make firered          # FireRed (original compiler)
+           make leafgreen        # LeafGreen (original compiler)  
+           make firered_modern   # FireRed (modern GCC)
+           make leafgreen_modern # LeafGreen (modern GCC)
+           ```
         
-        ### Installation
-        1. Download the ROM file you want to use
-        2. Load it in your preferred GBA emulator
-        3. Enjoy the quality of life improvements!
+        ### ✅ Build Verification
+        All ROM variants have been verified to build successfully in our CI pipeline:
+        - FireRed (original compiler)
+        - LeafGreen (original compiler)
+        - FireRed Revision 1 (original compiler)
+        - LeafGreen Revision 1 (original compiler)
+        - FireRed (modern GCC)
+        - LeafGreen (modern GCC)
+        - FireRed Revision 1 (modern GCC)
+        - LeafGreen Revision 1 (modern GCC)
         
-        See `README.md` for detailed feature information and `INSTALL.md` for building from source.
+        See `BUILD_VERIFICATION.md` for SHA256 checksums of successfully built ROMs.
+        
+        ### 📖 Documentation
+        - `README.md` - Feature overview and project information
+        - `INSTALL.md` - Detailed build setup instructions
+        - `ENHANCEMENTS.md` - List of quality of life improvements
+        
+        ### ⚖️ Legal Note
+        This project distributes source code only. You must provide your own legitimate Pokemon FireRed/LeafGreen ROM to build.
         EOF
         
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          release/*.gba
-          release/checksums.sha256
           release/README.md
           release/INSTALL.md
           release/ENHANCEMENTS.md
+          release/BUILD_VERIFICATION.md
         body_path: release_notes.md
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
