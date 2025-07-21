@@ -1,0 +1,217 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.changes.outputs.src }}
+      docs: ${{ steps.changes.outputs.docs }}
+      graphics: ${{ steps.changes.outputs.graphics }}
+      data: ${{ steps.changes.outputs.data }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          src:
+            - 'src/**'
+            - 'include/**'
+            - 'asm/**'
+          docs:
+            - '*.md'
+            - 'docs/**'
+          graphics:
+            - 'graphics/**'
+          data:
+            - 'data/**'
+
+  build-check:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.graphics == 'true' || needs.changes.outputs.data == 'true'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential binutils-arm-none-eabi \
+          git libpng-dev pkg-config python3
+        
+    - name: Build tools
+      run: make tools
+      
+    - name: Quick build test
+      run: |
+        echo "Testing if the project builds successfully..."
+        make firered -j$(nproc)
+        
+        if [ ! -f "pokefirered.gba" ]; then
+          echo "❌ Build failed - ROM was not created"
+          exit 1
+        else
+          echo "✅ Build successful"
+        fi
+
+  diff-check:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.src == 'true'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check for large changes
+      run: |
+        echo "Checking for large changes..."
+        
+        # Get the base branch (usually main/master)
+        BASE_BRANCH=${GITHUB_BASE_REF:-master}
+        
+        # Check lines changed
+        LINES_ADDED=$(git diff --numstat origin/$BASE_BRANCH...HEAD | awk '{sum += $1} END {print sum+0}')
+        LINES_REMOVED=$(git diff --numstat origin/$BASE_BRANCH...HEAD | awk '{sum += $2} END {print sum+0}')
+        TOTAL_CHANGES=$((LINES_ADDED + LINES_REMOVED))
+        
+        echo "Lines added: $LINES_ADDED"
+        echo "Lines removed: $LINES_REMOVED"
+        echo "Total changes: $TOTAL_CHANGES"
+        
+        # Warning for large PRs
+        if [ $TOTAL_CHANGES -gt 1000 ]; then
+          echo "⚠️ Large PR detected ($TOTAL_CHANGES lines changed)"
+          echo "Consider breaking this into smaller PRs for easier review"
+        fi
+        
+        # Check for binary file changes
+        if git diff --name-only origin/$BASE_BRANCH...HEAD | grep -E '\.(gba|bin|o|exe)$'; then
+          echo "⚠️ Binary files detected in PR"
+          echo "Please verify these are intended to be committed"
+        fi
+
+  code-quality:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.src == 'true'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check code style
+      run: |
+        echo "Checking code style..."
+        
+        # Check for tabs vs spaces consistency in C files
+        find src include -name "*.c" -o -name "*.h" | while read file; do
+          if grep -q $'\t' "$file" && grep -q '^    ' "$file"; then
+            echo "⚠️ Mixed tabs and spaces in: $file"
+          fi
+        done
+        
+        # Check for trailing whitespace
+        if find src include -name "*.c" -o -name "*.h" | xargs grep -l '[[:space:]]$' 2>/dev/null; then
+          echo "⚠️ Files with trailing whitespace found"
+          find src include -name "*.c" -o -name "*.h" | xargs grep -l '[[:space:]]$' 2>/dev/null
+        fi
+        
+        # Check for very long lines (over 120 characters)
+        find src include -name "*.c" -o -name "*.h" | while read file; do
+          long_lines=$(awk 'length > 120 {count++} END {print count+0}' "$file")
+          if [ $long_lines -gt 0 ]; then
+            echo "⚠️ $file has $long_lines lines over 120 characters"
+          fi
+        done
+
+  documentation-check:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.src == 'true'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check documentation updates
+      run: |
+        echo "Checking if documentation needs updates..."
+        
+        # Check if significant source changes might need README updates
+        if [ "${{ needs.changes.outputs.src }}" == "true" ]; then
+          echo "Source code changed - consider updating README.md if new features were added"
+        fi
+        
+        # Check for broken markdown links
+        if command -v markdown-link-check >/dev/null 2>&1; then
+          find . -name "*.md" -not -path "./.git/*" | xargs markdown-link-check --quiet
+        else
+          echo "Skipping link check (markdown-link-check not available)"
+        fi
+        
+        # Check README structure
+        if [ -f "README.md" ]; then
+          if ! grep -q "## Features" README.md; then
+            echo "⚠️ README.md missing '## Features' section"
+          fi
+          if ! grep -q "## Building" README.md && ! grep -q "## Build" README.md; then
+            echo "⚠️ README.md missing build instructions"
+          fi
+        fi
+
+  comment-pr:
+    needs: [changes, build-check, diff-check, code-quality]
+    runs-on: ubuntu-latest
+    if: always() && github.event.action == 'opened'
+    
+    steps:
+    - name: Comment on PR
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const changes = ${{ toJSON(needs.changes.outputs) }};
+          const buildSuccess = "${{ needs.build-check.result }}" === "success" || "${{ needs.build-check.result }}" === "skipped";
+          
+          let comment = "## 🤖 Automated PR Review\n\n";
+          
+          // Build status
+          if (changes.src === "true" || changes.graphics === "true" || changes.data === "true") {
+            if (buildSuccess) {
+              comment += "✅ **Build Check**: Passed\n";
+            } else {
+              comment += "❌ **Build Check**: Failed\n";
+            }
+          } else {
+            comment += "ℹ️ **Build Check**: Skipped (no code changes)\n";
+          }
+          
+          // Changes summary
+          comment += "\n### Changes Detected:\n";
+          if (changes.src === "true") comment += "- 🔧 Source code changes\n";
+          if (changes.docs === "true") comment += "- 📚 Documentation changes\n";
+          if (changes.graphics === "true") comment += "- 🎨 Graphics changes\n";
+          if (changes.data === "true") comment += "- 📊 Data changes\n";
+          
+          comment += "\n### Next Steps:\n";
+          comment += "- Ensure all checks pass\n";
+          comment += "- Test your changes on actual hardware/emulator\n";
+          comment += "- Update documentation if needed\n";
+          comment += "- Consider adding to ENHANCEMENTS.md if this adds new features\n";
+          
+          comment += "\n---\n*This comment was automatically generated*";
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

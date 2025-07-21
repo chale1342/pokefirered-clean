@@ -1,0 +1,205 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        version: [firered, leafgreen, firered_rev1, leafgreen_rev1]
+        modern: [0, 1]
+        include:
+          - modern: 0
+            cc: agbcc
+          - modern: 1
+            cc: gcc
+    
+    name: Build ${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential binutils-arm-none-eabi \
+          git libpng-dev pkg-config python3
+        
+    - name: Install devkitARM
+      if: matrix.modern == 1
+      run: |
+        wget https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman.amd64.deb
+        sudo dpkg -i devkitpro-pacman.amd64.deb || sudo apt-get install -f
+        sudo dkp-pacman -S gba-dev --noconfirm
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        
+    - name: Build tools
+      run: make tools
+      
+    - name: Build ROM (${{ matrix.version }})
+      env:
+        GAME_VERSION: ${{ contains(matrix.version, 'firered') && 'FIRERED' || 'LEAFGREEN' }}
+        GAME_REVISION: ${{ contains(matrix.version, '_rev1') && '1' || '0' }}
+        MODERN: ${{ matrix.modern }}
+      run: |
+        make -j$(nproc) GAME_VERSION=$GAME_VERSION GAME_REVISION=$GAME_REVISION MODERN=$MODERN
+        
+    - name: Verify ROM build
+      run: |
+        if [ ! -f "poke${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}.gba" ]; then
+          echo "Error: ROM file was not created"
+          exit 1
+        fi
+        
+        # Check ROM size (should be around 16MB for Pokemon FireRed/LeafGreen)
+        size=$(stat -f%z "poke${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}.gba" 2>/dev/null || stat -c%s "poke${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}.gba")
+        echo "ROM size: $size bytes"
+        
+        if [ $size -lt 15000000 ] || [ $size -gt 17000000 ]; then
+          echo "Warning: ROM size seems unusual ($size bytes)"
+        fi
+        
+    - name: Upload ROM artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: poke${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}-${{ github.sha }}
+        path: poke${{ matrix.version }}${{ matrix.modern == 1 && '_modern' || '' }}.gba
+        retention-days: 7
+
+  compare:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential binutils-arm-none-eabi \
+          git libpng-dev pkg-config python3
+        
+    - name: Build tools
+      run: make tools
+      
+    - name: Test build consistency
+      run: |
+        echo "Testing build reproducibility..."
+        make firered -j$(nproc)
+        cp pokefirered.gba build1.gba
+        make clean
+        make firered -j$(nproc)
+        cp pokefirered.gba build2.gba
+        
+        if ! cmp -s build1.gba build2.gba; then
+          echo "Warning: Build is not reproducible"
+        else
+          echo "Build is reproducible ✓"
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check file permissions
+      run: |
+        # Check for executable files that shouldn't be executable
+        find . -type f -name "*.c" -o -name "*.h" -o -name "*.inc" -o -name "*.s" | \
+        while read file; do
+          if [ -x "$file" ]; then
+            echo "Warning: $file should not be executable"
+          fi
+        done
+        
+    - name: Check line endings
+      run: |
+        # Check for files with incorrect line endings
+        echo "Checking line endings..."
+        
+        # Check that .pal files have CRLF line endings
+        find . -name "*.pal" -exec file {} \; | grep -v "CRLF" | while read line; do
+          echo "Warning: Palette file should have CRLF line endings: $line"
+        done
+        
+        # Check that source files have LF line endings  
+        find . \( -name "*.c" -o -name "*.h" -o -name "*.s" -o -name "*.inc" \) -exec file {} \; | grep "CRLF" | while read line; do
+          echo "Warning: Source file should have LF line endings: $line"
+        done
+        
+    - name: Check for common issues
+      run: |
+        echo "Checking for potential issues..."
+        
+        # Check for trailing whitespace
+        if git ls-files | xargs grep -l '[[:space:]]$' 2>/dev/null; then
+          echo "Warning: Files with trailing whitespace found"
+        fi
+        
+        # Check for mixed indentation (tabs and spaces)
+        if git ls-files "*.c" "*.h" | xargs grep -l $'^\t.*    \|^    .*\t' 2>/dev/null; then
+          echo "Warning: Files with mixed tab/space indentation found"
+        fi
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check for sensitive files
+      run: |
+        # Check for files that might contain sensitive information
+        echo "Checking for potential sensitive files..."
+        
+        if find . -name "*.key" -o -name "*.pem" -o -name "*.p12" -o -name "*.pfx" | grep -q .; then
+          echo "Warning: Potential sensitive files found"
+          find . -name "*.key" -o -name "*.pem" -o -name "*.p12" -o -name "*.pfx"
+        fi
+        
+        # Check for large binary files that might not belong
+        find . -type f -size +5M ! -path "./.git/*" | while read file; do
+          echo "Info: Large file found: $file ($(du -h "$file" | cut -f1))"
+        done
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check documentation
+      run: |
+        echo "Checking documentation..."
+        
+        # Check if README.md exists and has content
+        if [ ! -f README.md ]; then
+          echo "Error: README.md not found"
+          exit 1
+        fi
+        
+        if [ ! -s README.md ]; then
+          echo "Error: README.md is empty"
+          exit 1
+        fi
+        
+        # Check if INSTALL.md exists
+        if [ ! -f INSTALL.md ]; then
+          echo "Warning: INSTALL.md not found"
+        fi
+        
+        echo "Documentation check passed ✓"

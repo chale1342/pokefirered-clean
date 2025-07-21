@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential binutils-arm-none-eabi \
+          git libpng-dev pkg-config python3
+        
+    - name: Install devkitARM
+      run: |
+        wget https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman.amd64.deb
+        sudo dpkg -i devkitpro-pacman.amd64.deb || sudo apt-get install -f
+        sudo dkp-pacman -S gba-dev --noconfirm
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        
+    - name: Build tools
+      run: make tools
+      
+    - name: Build all ROM variants
+      run: |
+        echo "Building all ROM variants..."
+        
+        # Build all versions
+        make firered -j$(nproc)
+        make leafgreen -j$(nproc)
+        make firered_rev1 -j$(nproc)
+        make leafgreen_rev1 -j$(nproc)
+        make firered_modern -j$(nproc)
+        make leafgreen_modern -j$(nproc)
+        make firered_rev1_modern -j$(nproc)
+        make leafgreen_rev1_modern -j$(nproc)
+        
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        
+        # Copy ROM files
+        cp pokefirered.gba release/
+        cp pokeleafgreen.gba release/
+        cp pokefirered_rev1.gba release/
+        cp pokeleafgreen_rev1.gba release/
+        cp pokefirered_modern.gba release/
+        cp pokeleafgreen_modern.gba release/
+        cp pokefirered_rev1_modern.gba release/
+        cp pokeleafgreen_rev1_modern.gba release/
+        
+        # Copy documentation
+        cp README.md release/
+        cp INSTALL.md release/ 2>/dev/null || echo "INSTALL.md not found, skipping"
+        cp ENHANCEMENTS.md release/ 2>/dev/null || echo "ENHANCEMENTS.md not found, skipping"
+        
+        # Create checksums
+        cd release
+        sha256sum *.gba > checksums.sha256
+        
+    - name: Extract release notes
+      id: extract_notes
+      run: |
+        # Extract tag version
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Create release notes
+        cat > release_notes.md << 'EOF'
+        ## Pokemon FireRed - Personal Quality of Life Edition ${{ github.ref_name }}
+        
+        ### ROM Files Included:
+        - `pokefirered.gba` - FireRed (original compiler)
+        - `pokeleafgreen.gba` - LeafGreen (original compiler)
+        - `pokefirered_rev1.gba` - FireRed Revision 1 (original compiler)
+        - `pokeleafgreen_rev1.gba` - LeafGreen Revision 1 (original compiler)
+        - `pokefirered_modern.gba` - FireRed (modern GCC)
+        - `pokeleafgreen_modern.gba` - LeafGreen (modern GCC)
+        - `pokefirered_rev1_modern.gba` - FireRed Revision 1 (modern GCC)
+        - `pokeleafgreen_rev1_modern.gba` - LeafGreen Revision 1 (modern GCC)
+        
+        ### Verification
+        Use the included `checksums.sha256` file to verify ROM integrity:
+        ```bash
+        sha256sum -c checksums.sha256
+        ```
+        
+        ### Installation
+        1. Download the ROM file you want to use
+        2. Load it in your preferred GBA emulator
+        3. Enjoy the quality of life improvements!
+        
+        See `README.md` for detailed feature information and `INSTALL.md` for building from source.
+        EOF
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/*.gba
+          release/checksums.sha256
+          release/README.md
+          release/INSTALL.md
+          release/ENHANCEMENTS.md
+        body_path: release_notes.md
+        draft: false
+        prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
