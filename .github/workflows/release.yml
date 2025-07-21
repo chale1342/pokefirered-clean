@@ -13,20 +13,22 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
+    - name: Checkout agbcc
+      uses: actions/checkout@v4
+      with:
+        path: 'agbcc'
+        repository: 'pret/agbcc'
+
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential binutils-arm-none-eabi \
-          git libpng-dev pkg-config python3
-        
-    - name: Install devkitARM
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libpng-dev
+
+    - name: Install agbcc
       run: |
-        wget https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman.amd64.deb
-        sudo dpkg -i devkitpro-pacman.amd64.deb || sudo apt-get install -f
-        sudo dkp-pacman -S gba-dev --noconfirm
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        ./build.sh
+        ./install.sh ../
+      working-directory: ./agbcc
         
     - name: Build tools
       run: make tools
@@ -35,15 +37,41 @@ jobs:
       run: |
         echo "Building all ROM variants..."
         
-        # Build all versions
-        make firered -j$(nproc)
-        make leafgreen -j$(nproc)
-        make firered_rev1 -j$(nproc)
-        make leafgreen_rev1 -j$(nproc)
-        make firered_modern -j$(nproc)
-        make leafgreen_modern -j$(nproc)
-        make firered_rev1_modern -j$(nproc)
-        make leafgreen_rev1_modern -j$(nproc)
+        # Build FireRed (original compiler)
+        make -j$(nproc) all
+        cp pokefirered.gba pokefirered_original.gba
+        
+        # Build FireRed rev1 (original compiler)
+        make clean
+        GAME_REVISION=1 make -j$(nproc) all
+        cp pokefirered.gba pokefirered_rev1_original.gba
+        
+        # Build LeafGreen (original compiler)
+        make clean
+        GAME_VERSION=LEAFGREEN make -j$(nproc) all
+        cp pokeleafgreen.gba pokeleafgreen_original.gba
+        
+        # Build LeafGreen rev1 (original compiler)
+        make clean
+        GAME_VERSION=LEAFGREEN GAME_REVISION=1 make -j$(nproc) all
+        cp pokeleafgreen.gba pokeleafgreen_rev1_original.gba
+        
+        # Build modern versions
+        make clean
+        MODERN=1 COMPARE=0 make -j$(nproc) all
+        cp pokefirered.gba pokefirered_modern.gba
+        
+        make clean
+        MODERN=1 COMPARE=0 GAME_REVISION=1 make -j$(nproc) all
+        cp pokefirered.gba pokefirered_rev1_modern.gba
+        
+        make clean
+        MODERN=1 COMPARE=0 GAME_VERSION=LEAFGREEN make -j$(nproc) all
+        cp pokeleafgreen.gba pokeleafgreen_modern.gba
+        
+        make clean
+        MODERN=1 COMPARE=0 GAME_VERSION=LEAFGREEN GAME_REVISION=1 make -j$(nproc) all
+        cp pokeleafgreen.gba pokeleafgreen_rev1_modern.gba
         
     - name: Prepare release files
       run: |
@@ -51,7 +79,7 @@ jobs:
         
         # Verify ROM files were built successfully (but don't include in release)
         echo "Verifying ROM builds..."
-        for rom in pokefirered.gba pokeleafgreen.gba pokefirered_rev1.gba pokeleafgreen_rev1.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
+        for rom in pokefirered_original.gba pokeleafgreen_original.gba pokefirered_rev1_original.gba pokeleafgreen_rev1_original.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
           if [ -f "$rom" ]; then
             echo "✅ $rom built successfully ($(du -h "$rom" | cut -f1))"
           else
@@ -70,7 +98,7 @@ jobs:
         echo "==============================" >> release/BUILD_VERIFICATION.md
         echo "" >> release/BUILD_VERIFICATION.md
         echo "All ROM variants built successfully:" >> release/BUILD_VERIFICATION.md
-        for rom in pokefirered.gba pokeleafgreen.gba pokefirered_rev1.gba pokeleafgreen_rev1.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
+        for rom in pokefirered_original.gba pokeleafgreen_original.gba pokefirered_rev1_original.gba pokeleafgreen_rev1_original.gba pokefirered_modern.gba pokeleafgreen_modern.gba pokefirered_rev1_modern.gba pokeleafgreen_rev1_modern.gba; do
           if [ -f "$rom" ]; then
             echo "- $rom: $(sha256sum "$rom" | cut -d' ' -f1)" >> release/BUILD_VERIFICATION.md
           fi

@@ -14,11 +14,22 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
+    - name: Checkout agbcc
+      uses: actions/checkout@v4
+      with:
+        path: 'agbcc'
+        repository: 'pret/agbcc'
+      
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential binutils-arm-none-eabi \
-          git libpng-dev pkg-config python3
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libpng-dev
+        
+    - name: Install agbcc
+      run: |
+        ./build.sh
+        ./install.sh ../
+      working-directory: ./agbcc
         
     - name: Build tools health check
       run: |
