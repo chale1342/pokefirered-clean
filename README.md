@@ -1,7 +1,7 @@
 # Pokemon FireRed - Personal Quality of Life Edition
 
-[![Build](https://github.com/chale1342/pokefirered/workflows/Build/badge.svg)](https://github.com/chale1342/pokefirered/actions)
-[![Release](https://img.shields.io/github/v/release/chale1342/pokefirered)](https://github.com/chale1342/pokefirered/releases)
+[![Build](https://github.com/chale1342/pokefirered-clean/workflows/Build/badge.svg)](https://github.com/chale1342/pokefirered-clean/actions)
+[![Release](https://img.shields.io/github/v/release/chale1342/pokefirered-clean)](https://github.com/chale1342/pokefirered-clean/releases)
 
 **A personal ROM hack with quality of life improvements I wanted for my own playthrough.**
 
