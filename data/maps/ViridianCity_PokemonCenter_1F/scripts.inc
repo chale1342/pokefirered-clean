@@ -1,0 +1,58 @@
+ViridianCity_PokemonCenter_1F_MapScripts::
+	map_script MAP_SCRIPT_ON_TRANSITION, ViridianCity_PokemonCenter_1F_OnTransition
+	map_script MAP_SCRIPT_ON_RESUME, CableClub_OnResume
+	.byte 0
+
+ViridianCity_PokemonCenter_1F_OnTransition::
+	setrespawn HEAL_LOCATION_VIRIDIAN_CITY
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_Nurse::
+	lock
+	faceplayer
+	call EventScript_PkmnCenterNurse
+	release
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_Boy::
+	msgbox ViridianCity_PokemonCenter_1F_Text_PokeCenterInEveryTown, MSGBOX_NPC
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_Gentleman::
+	msgbox ViridianCity_PokemonCenter_1F_Text_FeelFreeToUsePC, MSGBOX_NPC
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_Youngster::
+	msgbox ViridianCity_PokemonCenter_1F_Text_PokeCentersHealMons, MSGBOX_NPC
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_FishingGuru::
+	lock
+	faceplayer
+	goto_if_set FLAG_GOT_OLD_ROD, ViridianCity_PokemonCenter_1F_EventScript_AlreadyGotOldRod
+	msgbox ViridianCity_PokemonCenter_1F_Text_ImFishingGuruDoYouLikeToFish, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, YES, ViridianCity_PokemonCenter_1F_EventScript_GiveOldRod
+	msgbox ViridianCity_PokemonCenter_1F_Text_OhThatsSoDisappointing
+	release
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_AlreadyGotOldRod::
+	msgbox ViridianCity_PokemonCenter_1F_Text_HowAreTheFishBiting
+	release
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_GiveOldRod::
+	checkitemspace ITEM_OLD_ROD
+	goto_if_eq VAR_RESULT, FALSE, ViridianCity_PokemonCenter_1F_EventScript_NoRoomForOldRod
+	additem ITEM_OLD_ROD
+	msgbox ViridianCity_PokemonCenter_1F_Text_TakeThisAndFish
+	msgreceiveditem ViridianCity_PokemonCenter_1F_Text_ReceivedOldRodFromFishingGuru, ITEM_OLD_ROD
+	setflag FLAG_GOT_OLD_ROD
+	msgbox ViridianCity_PokemonCenter_1F_Text_FishingIsAWayOfLife
+	release
+	end
+
+ViridianCity_PokemonCenter_1F_EventScript_NoRoomForOldRod::
+	msgbox ViridianCity_PokemonCenter_1F_Text_NoRoomForNiceGift
+	release
+	end

@@ -1,0 +1,37 @@
+build/firered/src/decoration.o: include/config.h include/constants/decorations.h include/constants/easy_chat.h include/constants/event_objects.h include/constants/fame_checker.h include/constants/flags.h include/constants/game_stat.h include/constants/global.h include/constants/map_event_ids.h include/constants/opponents.h include/constants/pokedex.h include/constants/pokemon.h include/constants/rgb.h include/constants/species.h include/constants/trainers.h include/constants/vars.h include/decoration.h include/fame_checker.h include/gba/defines.h include/gba/gba.h include/gba/io_reg.h include/gba/isagbprint.h include/gba/macro.h include/gba/syscall.h include/gba/types.h include/global.berry.h include/global.fieldmap.h include/global.h include/main.h include/multiboot.h include/pokemon.h include/sprite.h src/data/decoration/description.h src/data/decoration/header.h src/data/decoration/tiles.h
+build/firered/src/decoration.d: include/config.h include/constants/decorations.h include/constants/easy_chat.h include/constants/event_objects.h include/constants/fame_checker.h include/constants/flags.h include/constants/game_stat.h include/constants/global.h include/constants/map_event_ids.h include/constants/opponents.h include/constants/pokedex.h include/constants/pokemon.h include/constants/rgb.h include/constants/species.h include/constants/trainers.h include/constants/vars.h include/decoration.h include/fame_checker.h include/gba/defines.h include/gba/gba.h include/gba/io_reg.h include/gba/isagbprint.h include/gba/macro.h include/gba/syscall.h include/gba/types.h include/global.berry.h include/global.fieldmap.h include/global.h include/main.h include/multiboot.h include/pokemon.h include/sprite.h src/data/decoration/description.h src/data/decoration/header.h src/data/decoration/tiles.h
+include/config.h:
+include/constants/decorations.h:
+include/constants/easy_chat.h:
+include/constants/event_objects.h:
+include/constants/fame_checker.h:
+include/constants/flags.h:
+include/constants/game_stat.h:
+include/constants/global.h:
+include/constants/map_event_ids.h:
+include/constants/opponents.h:
+include/constants/pokedex.h:
+include/constants/pokemon.h:
+include/constants/rgb.h:
+include/constants/species.h:
+include/constants/trainers.h:
+include/constants/vars.h:
+include/decoration.h:
+include/fame_checker.h:
+include/gba/defines.h:
+include/gba/gba.h:
+include/gba/io_reg.h:
+include/gba/isagbprint.h:
+include/gba/macro.h:
+include/gba/syscall.h:
+include/gba/types.h:
+include/global.berry.h:
+include/global.fieldmap.h:
+include/global.h:
+include/main.h:
+include/multiboot.h:
+include/pokemon.h:
+include/sprite.h:
+src/data/decoration/description.h:
+src/data/decoration/header.h:
+src/data/decoration/tiles.h:
