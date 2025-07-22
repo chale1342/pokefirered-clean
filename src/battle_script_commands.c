@@ -9700,7 +9700,7 @@ static void Cmd_givecaptureexp(void)
         gBattleStruct->expGetterBattlerId = 0;
         
         // Prepare message buffers using existing system
-        PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, i);
+        PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, (u8)i);
         PREPARE_STRING_BUFFER(gBattleTextBuff2, STRINGID_EMPTYSTRING4);
         
         // Use existing exp gained message (without showing the amount)
