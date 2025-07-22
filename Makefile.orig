@@ -76,11 +76,11 @@ INCLUDE_CPP_ARGS := $(INCLUDE_DIRS:%=-iquote %)
 INCLUDE_SCANINC_ARGS := $(INCLUDE_DIRS:%=-I %)
 
 O_LEVEL ?= 2
-CPPFLAGS := $(INCLUDE_CPP_ARGS) -Wno-trigraphs -D$(GAME_VERSION) -DREVISION=$(GAME_REVISION) -D$(GAME_LANGUAGE) -DMODERN=$(MODERN) -DNDEBUG
+CPPFLAGS := $(INCLUDE_CPP_ARGS) -Wno-trigraphs -D$(GAME_VERSION) -DREVISION=$(GAME_REVISION) -D$(GAME_LANGUAGE) -DMODERN=$(MODERN)
 ifeq ($(MODERN),0)
-  CPPFLAGS += -I tools/agbcc/include -I tools/agbcc/libc/include -I tools/agbcc -nostdinc -undef -std=gnu89
+  CPPFLAGS += -I tools/agbcc/include -I tools/agbcc -nostdinc -undef -std=gnu89
   CC1 := tools/agbcc/bin/agbcc$(EXE)
-  override CFLAGS += -mthumb-interwork -Wimplicit -Wparentheses -O$(O_LEVEL)
+  override CFLAGS += -mthumb-interwork -Wimplicit -Wparentheses -Werror -O$(O_LEVEL) -fhex-asm
   LIBPATH := -L ../../tools/agbcc/lib
   LIB := $(LIBPATH) -lgcc -lc
 else
@@ -168,7 +168,7 @@ endif
 
 # Collect sources
 C_SRCS_IN := $(wildcard $(C_SUBDIR)/*.c $(C_SUBDIR)/*/*.c $(C_SUBDIR)/*/*/*.c)
-C_SRCS := $(foreach src,$(C_SRCS_IN),$(if $(findstring .inc.c,$(src)),,$(if $(findstring isagbprn.c,$(src)),,$(src))))
+C_SRCS := $(foreach src,$(C_SRCS_IN),$(if $(findstring .inc.c,$(src)),,$(src)))
 C_OBJS := $(patsubst $(C_SUBDIR)/%.c,$(C_BUILDDIR)/%.o,$(C_SRCS))
 
 C_ASM_SRCS := $(wildcard $(C_SUBDIR)/*.s $(C_SUBDIR)/*/*.s $(C_SUBDIR)/*/*/*.s)
@@ -207,7 +207,6 @@ endif
 
 syms: $(SYM)
 
-
 clean: tidy clean-tools clean-generated clean-assets
 
 clean-assets:
@@ -219,7 +218,7 @@ clean-assets:
 	find $(DATA_ASM_SUBDIR)/maps \( -iname 'connections.inc' -o -iname 'events.inc' -o -iname 'header.inc' \) -exec rm {} +
 
 tidy:
-	$(RM) $(ALL_BUILDS:%=poke%.gba) $(ALL_BUILDS:%=poke%.elf) $(ALL_BUILDS:%=poke%.map)
+	$(RM) $(ALL_BUILDS:%=poke%{.gba,.elf,.map})
 	$(RM) -r $(BUILD_DIR)
 
 # "friendly" target names for convenience sake
@@ -275,9 +274,8 @@ $(C_BUILDDIR)/agb_flash_mx.o: CFLAGS := -O -mthumb-interwork
 
 $(C_BUILDDIR)/m4a.o: CC1 := $(TOOLS_DIR)/agbcc/bin/old_agbcc$(EXE)
 
-$(C_BUILDDIR)/pokemon.o: CFLAGS := -mthumb-interwork -Wimplicit -Wparentheses -O1
-
-$(C_BUILDDIR)/multiboot.o: CFLAGS := -mthumb-interwork -Wimplicit -Wparentheses -O$(O_LEVEL) -fhex-asm
+$(C_BUILDDIR)/isagbprn.o: CC1 := $(TOOLS_DIR)/agbcc/bin/old_agbcc$(EXE)
+$(C_BUILDDIR)/isagbprn.o: CFLAGS := -mthumb-interwork
 
 $(C_BUILDDIR)/trainer_tower.o: CFLAGS += -ffreestanding
 $(C_BUILDDIR)/battle_anim_flying.o: CFLAGS += -ffreestanding

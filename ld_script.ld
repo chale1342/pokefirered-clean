@@ -338,7 +338,7 @@ SECTIONS {
         src/librfu_intr.o(.text);
         src/librfu_rfu.o(.text);
         src/librfu_sio32id.o(.text);
-        src/isagbprn.o(.text);
+        /* src/isagbprn.o(.text); */
         src/libagbsyscall.o(.text);
         *libgcc.a:_call_via_rX.o(.text);
         *libgcc.a:_divdi3.o(.text);
@@ -974,7 +974,7 @@ SECTIONS {
         src/agb_flash_le.o(.rodata);
         src/librfu_rfu.o(.rodata);
         src/librfu_sio32id.o(.rodata);
-        src/isagbprn.o(.rodata);
+        /* src/isagbprn.o(.rodata); */
         *libgcc.a:_divdi3.o(.rodata);
         *libgcc.a:_udivdi3.o(.rodata);
         *libc.a:memcpy.o(.rodata);
