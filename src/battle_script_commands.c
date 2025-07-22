@@ -9708,7 +9708,7 @@ static void Cmd_givecaptureexp(void)
         
         // Give the experience using the battle controller
         gActiveBattler = 0;
-        BtlController_EmitExpUpdate(BUFFER_A, i, exp & 0xFFFF);
+        BtlController_EmitExpUpdate(BUFFER_A, i, (u16)(exp & 0xFFFF));
         MarkBattlerForControllerExec(0);
         
         // Only show one at a time to avoid overwhelming
