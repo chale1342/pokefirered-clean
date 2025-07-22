@@ -9669,6 +9669,7 @@ static void Cmd_givecaptureexp(void)
     u8 level;
     s32 exp;
     s32 i;
+    u32 currentExp, newExp;
     
     // Get the caught Pokemon's info from the last battled opponent
     species = gBattleMons[gBattlerFainted].species;
@@ -9692,31 +9693,13 @@ static void Cmd_givecaptureexp(void)
         if (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) >= MAX_LEVEL)
             continue;
             
-        // Store experience amount for battle system
-        gBattleMoveDamage = exp;
-        
-        // Set up experience getter info
-        gBattleStruct->expGetterMonId = (u8)i;
-        gBattleStruct->expGetterBattlerId = 0;
-        
-        // Prepare message buffers using existing system
-        PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, (u8)i);
-        PREPARE_STRING_BUFFER(gBattleTextBuff2, STRINGID_EMPTYSTRING4);
-        
-        // Use existing exp gained message (without showing the amount)
-        PrepareStringBattle(STRINGID_PKMNGAINEDEXP, 0);
-        
-        // Give the experience using the battle controller
-        gActiveBattler = 0;
-        BtlController_EmitExpUpdate(BUFFER_A, i, (u16)(exp & 0xFFFF));
-        MarkBattlerForControllerExec(0);
-        
-        // Only show one at a time to avoid overwhelming
-        gBattlescriptCurrInstr++;
-        return;
+        // Give experience directly to the Pokemon (no battle animation for now)
+        currentExp = GetMonData(&gPlayerParty[i], MON_DATA_EXP);
+        newExp = currentExp + exp;
+        SetMonData(&gPlayerParty[i], MON_DATA_EXP, &newExp);
+        CalculateMonStats(&gPlayerParty[i]);
     }
     
-    // If no Pokemon received exp, just advance
     gBattlescriptCurrInstr++;
 }
 
