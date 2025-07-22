@@ -304,6 +304,7 @@ static void Cmd_snatchsetbattlers(void);
 static void Cmd_removelightscreenreflect(void);
 static void Cmd_handleballthrow(void);
 static void Cmd_givecaughtmon(void);
+static void Cmd_givecaptureexp(void);
 static void Cmd_trysetcaughtmondexflags(void);
 static void Cmd_displaydexinfo(void);
 static void Cmd_trygivecaughtmonnick(void);
@@ -555,13 +556,14 @@ void (* const gBattleScriptingCommandsTable[])(void) =
     Cmd_removelightscreenreflect,                //0xEE
     Cmd_handleballthrow,                         //0xEF
     Cmd_givecaughtmon,                           //0xF0
-    Cmd_trysetcaughtmondexflags,                 //0xF1
-    Cmd_displaydexinfo,                          //0xF2
-    Cmd_trygivecaughtmonnick,                    //0xF3
-    Cmd_subattackerhpbydmg,                      //0xF4
-    Cmd_removeattackerstatus1,                   //0xF5
-    Cmd_finishaction,                            //0xF6
-    Cmd_finishturn,                              //0xF7
+    Cmd_givecaptureexp,                          //0xF1
+    Cmd_trysetcaughtmondexflags,                 //0xF2
+    Cmd_displaydexinfo,                          //0xF3
+    Cmd_trygivecaughtmonnick,                    //0xF4
+    Cmd_subattackerhpbydmg,                      //0xF5
+    Cmd_removeattackerstatus1,                   //0xF6
+    Cmd_finishaction,                            //0xF7
+    Cmd_finishturn,                              //0xF8
 };
 
 struct StatFractions
@@ -9658,6 +9660,63 @@ static void Cmd_givecaughtmon(void)
     gBattleResults.caughtMonSpecies = gBattleMons[gBattlerAttacker ^ BIT_SIDE].species;
     GetMonData(&gEnemyParty[gBattlerPartyIndexes[gBattlerAttacker ^ BIT_SIDE]], MON_DATA_NICKNAME, gBattleResults.caughtMonNick);
 
+    gBattlescriptCurrInstr++;
+}
+
+static void Cmd_givecaptureexp(void)
+{
+    u16 species;
+    u8 level;
+    s32 exp;
+    s32 i;
+    
+    // Get the caught Pokemon's info from the last battled opponent
+    species = gBattleMons[gBattlerFainted].species;
+    level = gBattleMons[gBattlerFainted].level;
+    
+    // Calculate capture experience (reduced amount compared to battle exp)
+    exp = gSpeciesInfo[species].expYield * level;
+    exp = exp / 20;  // Separate division to match normal exp calculation pattern
+    if (exp == 0)
+        exp = 1;
+    if (exp > 9999) // Cap at 9999 to prevent truncation warnings
+        exp = 9999;
+    
+    // Give experience to all non-fainted party Pokemon
+    for (i = 0; i < PARTY_SIZE; i++)
+    {
+        if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
+            continue;
+        if (GetMonData(&gPlayerParty[i], MON_DATA_HP) == 0)
+            continue;
+        if (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) >= MAX_LEVEL)
+            continue;
+            
+        // Store experience amount for battle system
+        gBattleMoveDamage = exp;
+        
+        // Set up experience getter info
+        gBattleStruct->expGetterMonId = i;
+        gBattleStruct->expGetterBattlerId = 0;
+        
+        // Prepare message buffers using existing system
+        PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, i);
+        PREPARE_STRING_BUFFER(gBattleTextBuff2, STRINGID_EMPTYSTRING4);
+        
+        // Use existing exp gained message (without showing the amount)
+        PrepareStringBattle(STRINGID_PKMNGAINEDEXP, 0);
+        
+        // Give the experience using the battle controller
+        gActiveBattler = 0;
+        BtlController_EmitExpUpdate(BUFFER_A, i, (u16)exp);
+        MarkBattlerForControllerExec(0);
+        
+        // Only show one at a time to avoid overwhelming
+        gBattlescriptCurrInstr++;
+        return;
+    }
+    
+    // If no Pokemon received exp, just advance
     gBattlescriptCurrInstr++;
 }
 
