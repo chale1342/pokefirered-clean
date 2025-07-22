@@ -9696,7 +9696,7 @@ static void Cmd_givecaptureexp(void)
         gBattleMoveDamage = exp;
         
         // Set up experience getter info
-        gBattleStruct->expGetterMonId = i;
+        gBattleStruct->expGetterMonId = (u8)i;
         gBattleStruct->expGetterBattlerId = 0;
         
         // Prepare message buffers using existing system
