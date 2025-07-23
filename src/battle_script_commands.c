@@ -9683,7 +9683,7 @@ static void Cmd_givecaptureexp(void)
     if (exp > 9999) // Cap at 9999 to prevent truncation warnings
         exp = 9999;
     
-    // Give experience to all non-fainted party Pokemon
+    // Use the EXP gain state machine to show XP bar and message, like normal EXP gain
     for (i = 0; i < PARTY_SIZE; i++)
     {
         if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
@@ -9692,14 +9692,18 @@ static void Cmd_givecaptureexp(void)
             continue;
         if (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) >= MAX_LEVEL)
             continue;
-            
-        // Give experience directly to the Pokemon (no battle animation for now)
-        currentExp = GetMonData(&gPlayerParty[i], MON_DATA_EXP);
-        newExp = currentExp + exp;
-        SetMonData(&gPlayerParty[i], MON_DATA_EXP, &newExp);
-        CalculateMonStats(&gPlayerParty[i]);
+
+        // Set up exp gain state for this mon
+        gBattleStruct->expGetterMonId = i;
+        gBattleStruct->expGetterBattlerId = 0; // Assume single battle for now
+        gActiveBattler = 0;
+        gBattleMoveDamage = exp; // This is the amount of EXP to award
+        gBattleScripting.getexpState = 0;
+        BattleScriptPushCursor();
+        gBattlescriptCurrInstr = BattleScript_GiveExp; // Use the normal exp gain script
+        return; // Only handle one at a time, like normal EXP gain
     }
-    
+
     gBattlescriptCurrInstr++;
 }
 
