@@ -10,6 +10,30 @@
 #include "pokemon_icon.h"
 #include "mail.h"
 #include "event_data.h"
+#include "pokemon_special_anim.h"
+#include "pokemon_storage_system.h"
+#include "pokemon_summary_screen.h"
+#include "task.h"
+#include "naming_screen.h"
+#include "overworld.h"
+#include "party_menu.h"
+// ...existing includes...
+
+// ...existing externs...
+extern const u8 BattleScript_CaughtPokemonDone[];
+extern const u8 BattleScript_CaptureExpGain[];
+#include "global.h"
+#include "battle.h"
+#include "constants/global.h"
+#include "gflib.h"
+#include "item.h"
+#include "util.h"
+#include "random.h"
+#include "pokedex.h"
+#include "money.h"
+#include "pokemon_icon.h"
+#include "mail.h"
+#include "event_data.h"
 #include "strings.h"
 #include "pokemon_special_anim.h"
 #include "pokemon_storage_system.h"
@@ -9667,43 +9691,50 @@ static void Cmd_givecaptureexp(void)
 {
     u16 species;
     u8 level;
-    s32 exp;
-    s32 i;
-    u32 currentExp, newExp;
+    s32 expCalc;
+    u16 exp;
+    u8 i;
+    u8 activePartyIdx;
     
     // Get the caught Pokemon's info from the last battled opponent
     species = gBattleMons[gBattlerFainted].species;
     level = gBattleMons[gBattlerFainted].level;
     
     // Calculate capture experience (reduced amount compared to battle exp)
-    exp = gSpeciesInfo[species].expYield * level;
-    exp = exp / 20;  // Separate division to match normal exp calculation pattern
-    if (exp == 0)
-        exp = 1;
-    if (exp > 9999) // Cap at 9999 to prevent truncation warnings
-        exp = 9999;
+    expCalc = gSpeciesInfo[species].expYield * level / 7; // Match normal defeat EXP formula
+    if (expCalc == 0)
+        expCalc = 1;
+    if (expCalc > 9999) // Cap at 9999 to prevent truncation warnings
+        expCalc = 9999;
+    exp = (u16)expCalc;
     
-    // Use the EXP gain state machine to show XP bar and message, like normal EXP gain
-    for (i = 0; i < PARTY_SIZE; i++)
+    // Only give EXP to the active battler and those with EXP Share (but not both)
+    // Only give EXP to the active battler for a capture
+    activePartyIdx = gBattlerPartyIndexes[0]; // 0 = player battler
+    if (gBattleScripting.captureExpPartyIndex == 0)
     {
-        if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
-            continue;
-        if (GetMonData(&gPlayerParty[i], MON_DATA_HP) == 0)
-            continue;
-        if (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) >= MAX_LEVEL)
-            continue;
-
-        // Set up exp gain state for this mon
-        gBattleStruct->expGetterMonId = i;
-        gBattleStruct->expGetterBattlerId = 0; // Assume single battle for now
-        gActiveBattler = 0;
-        gBattleMoveDamage = exp; // This is the amount of EXP to award
-        gBattleScripting.getexpState = 0;
-        BattleScriptPushCursor();
-        gBattlescriptCurrInstr = BattleScript_GiveExp; // Use the normal exp gain script
-        return; // Only handle one at a time, like normal EXP gain
+        if (GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_SPECIES) != SPECIES_NONE
+            && GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_HP) > 0
+            && GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_LEVEL) < MAX_LEVEL
+            && !GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_IS_EGG))
+        {
+            gBattleStruct->expGetterMonId = activePartyIdx;
+            gBattleStruct->expGetterBattlerId = 0;
+            gActiveBattler = 0;
+            gBattleMoveDamage = exp;
+            gBattleScripting.getexpState = 1;
+            PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, activePartyIdx);
+            PREPARE_STRING_BUFFER(gBattleTextBuff2, STRINGID_EMPTYSTRING4);
+            PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff3, 5, exp);
+            BattleScriptPushCursor();
+            gBattlescriptCurrInstr = BattleScript_CaptureExpGain;
+            gBattleScripting.captureExpPartyIndex++;
+            return;
+        }
+        gBattleScripting.captureExpPartyIndex++;
     }
-
+    // All eligible Pokemon have received EXP
+    gBattleScripting.captureExpPartyIndex = 0;
     gBattlescriptCurrInstr++;
 }
 

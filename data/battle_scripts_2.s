@@ -98,6 +98,11 @@ BattleScript_CaughtPokemonDone::
 	setbyte gBattleOutcome, B_OUTCOME_CAUGHT
 	finishturn
 
+BattleScript_CaptureExpGain::
+	printstring STRINGID_PKMNGAINEDEXP
+	waitmessage B_WAIT_TIME_LONG
+	return
+
 BattleScript_OldMan_Pokedude_CaughtMessage::
 	printstring STRINGID_GOTCHAPKMNCAUGHT2
 	setbyte gBattleOutcome, B_OUTCOME_CAUGHT
