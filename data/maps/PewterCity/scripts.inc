@@ -651,36 +651,36 @@ PewterCity_EventScript_CitySign::
 	msgbox PewterCity_Text_CitySign, MSGBOX_SIGN
 	end
 
-PewterCity_EventScript_RunningShoesAide::
+PewterCity_EventScript_ExpShareAide::
 	lock
 	faceplayer
 	setvar VAR_TEMP_1, 0
-	call PewterCity_EventScript_AideGiveRunningShoes
+	call PewterCity_EventScript_AideGiveExpShare
 	release
 	end
 
-PewterCity_EventScript_RunningShoesAideTriggerTop::
+PewterCity_EventScript_ExpShareAideTriggerTop::
 	lockall
 	setvar VAR_TEMP_1, 1
-	call PewterCity_EventScript_AideGiveRunningShoes
+	call PewterCity_EventScript_AideGiveExpShare
 	releaseall
 	end
 
-PewterCity_EventScript_RunningShoesAideTriggerMid::
+PewterCity_EventScript_ExpShareAideTriggerMid::
 	lockall
 	setvar VAR_TEMP_1, 2
-	call PewterCity_EventScript_AideGiveRunningShoes
+	call PewterCity_EventScript_AideGiveExpShare
 	releaseall
 	end
 
-PewterCity_EventScript_RunningShoesAideTriggerBottom::
+PewterCity_EventScript_ExpShareAideTriggerBottom::
 	lockall
 	setvar VAR_TEMP_1, 3
-	call PewterCity_EventScript_AideGiveRunningShoes
+	call PewterCity_EventScript_AideGiveExpShare
 	releaseall
 	end
 
-PewterCity_EventScript_AideGiveRunningShoes::
+PewterCity_EventScript_AideGiveExpShare::
 	textcolor NPC_TEXT_COLOR_MALE
 	call_if_eq VAR_TEMP_1, 1, PewterCity_EventScript_AideNoticePlayer
 	call_if_eq VAR_TEMP_1, 2, PewterCity_EventScript_AideNoticePlayer
@@ -698,14 +698,16 @@ PewterCity_EventScript_AideGiveRunningShoes::
 	call_if_eq VAR_TEMP_1, 3, PewterCity_EventScript_AideApproachPlayer3
 	msgbox PewterCity_Text_AskedToDeliverThis
 	textcolor NPC_TEXT_COLOR_NEUTRAL
-	playfanfare MUS_OBTAIN_KEY_ITEM
-	message PewterCity_Text_ReceivedRunningShoesFromAide
+	checkitemspace ITEM_EXP_SHARE
+	goto_if_eq VAR_RESULT, FALSE, Aide_EventScript_NoRoomForItem
+	playfanfare MUS_OBTAIN_ITEM
+	message PewterCity_Text_ReceivedExpShareFromAide
 	waitmessage
 	waitfanfare
-	msgbox PewterCity_Text_SwitchedShoesWithRunningShoes
+	additem ITEM_EXP_SHARE
 	special DisableMsgBoxWalkaway
 	signmsg
-	msgbox PewterCity_Text_ExplainRunningShoes
+	msgbox PewterCity_Text_ExplainExpShare
 	normalmsg
 	call EventScript_RestorePrevTextColor
 	msgbox PewterCity_Text_MustBeGoingBackToLab
@@ -715,11 +717,8 @@ PewterCity_EventScript_AideGiveRunningShoes::
 	call_if_eq VAR_TEMP_1, 2, PewterCity_EventScript_AideExit2
 	call_if_eq VAR_TEMP_1, 3, PewterCity_EventScript_AideExit3
 	delay 30
-	textcolor NPC_TEXT_COLOR_NEUTRAL
-	msgbox PewterCity_Text_RunningShoesLetterFromMom
-	closemessage
 	removeobject LOCALID_PEWTER_AIDE
-	setflag FLAG_SYS_B_DASH
+	setflag FLAG_GOT_EXP_SHARE_FROM_PEWTER_AIDE
 	setvar VAR_MAP_SCENE_PEWTER_CITY, 2
 	return
 

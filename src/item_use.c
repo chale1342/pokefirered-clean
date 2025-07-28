@@ -923,3 +923,25 @@ void ItemUse_SetQuestLogEvent(u8 eventId, struct Pokemon *pokemon, u16 itemId, u
     SetQuestLogEvent(eventId, (void *)data);
     Free(data);
 }
+
+void ItemUseOutOfBattle_ExpShare(u8 taskId)
+{
+    if (!gSaveBlock2Ptr->optionsExpShare)
+    {
+        gSaveBlock2Ptr->optionsExpShare = 1;
+        PlaySE(SE_EXP_MAX);
+        if (!gTasks[taskId].data[2]) // to account for pressing select in the overworld
+            DisplayItemMessageOnField(taskId, FONT_NORMAL, gText_ExpShareOn, Task_ItemUse_CloseMessageBoxAndReturnToField);
+        else
+            DisplayItemMessageInBag(taskId, FONT_NORMAL, gText_ExpShareOn, Task_ReturnToBagFromContextMenu);
+    }
+    else
+    {
+        gSaveBlock2Ptr->optionsExpShare = 0;
+        PlaySE(SE_PC_OFF);
+        if (!gTasks[taskId].data[2]) // to account for pressing select in the overworld
+            DisplayItemMessageOnField(taskId, FONT_NORMAL, gText_ExpShareOff, Task_ItemUse_CloseMessageBoxAndReturnToField);
+        else
+            DisplayItemMessageInBag(taskId, FONT_NORMAL, gText_ExpShareOff, Task_ReturnToBagFromContextMenu);
+    }
+}

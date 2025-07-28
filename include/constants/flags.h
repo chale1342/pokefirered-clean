@@ -159,7 +159,7 @@
 #define FLAG_HIDE_SAPPHIRE                                 0x08F
 #define FLAG_HIDE_DOTTED_HOLE_SCIENTIST                    0x090
 #define FLAG_HIDE_THREE_ISLAND_LONE_BIKER                  0x091
-#define FLAG_HIDE_PEWTER_CITY_RUNNING_SHOES_GUY            0x092
+#define FLAG_HIDE_PEWTER_CITY_EXP_SHARE_GUY            0x092
 #define FLAG_HIDE_LOST_CAVE_SELPHY                         0x093
 #define FLAG_HIDE_RESORT_GORGEOUS_SELPHY                   0x094
 #define FLAG_HIDE_RESORT_GORGEOUS_INSIDE_SELPHY            0x095
@@ -1224,7 +1224,7 @@
 // Unused hidden item flags
 //#define FLAG_UNUSED_0x4A7               0x4A7 // Unused Flag
 #define FLAG_GOT_RUNNING_SHOES 0x4A7
-#define FLAG_UNUSED_0x4A8               0x4A8 // Unused Flag
+#define FLAG_GOT_EXP_SHARE_FROM_PEWTER_AIDE 0x4A8
 #define FLAG_UNUSED_0x4A9               0x4A9 // Unused Flag
 #define FLAG_UNUSED_0x4AA               0x4AA // Unused Flag
 #define FLAG_UNUSED_0x4AB               0x4AB // Unused Flag

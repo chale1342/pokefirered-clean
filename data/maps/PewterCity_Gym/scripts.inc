@@ -15,10 +15,10 @@ PewterCity_Gym_EventScript_DefeatedBrock::
 	setflag FLAG_BADGE01_GET
 	setvar VAR_MAP_SCENE_PEWTER_CITY, 1
 	setflag FLAG_HIDE_PEWTER_CITY_GYM_GUIDE
-	@ Don't spawn running shoes aide if player already has them from Pallet Town
-	goto_if_set FLAG_GOT_RUNNING_SHOES, PewterCity_Gym_EventScript_SkipRunningShoesAide
-	clearflag FLAG_HIDE_PEWTER_CITY_RUNNING_SHOES_GUY
-PewterCity_Gym_EventScript_SkipRunningShoesAide::
+	@ Don't spawn exp share aide if player already has it
+	goto_if_set FLAG_GOT_EXP_SHARE_FROM_PEWTER_AIDE, PewterCity_Gym_EventScript_SkipExpShareAide
+	clearflag FLAG_HIDE_PEWTER_CITY_EXP_SHARE_GUY
+PewterCity_Gym_EventScript_SkipExpShareAide::
 	set_gym_trainers 1
 	goto PewterCity_Gym_EventScript_GiveTM39
 	end

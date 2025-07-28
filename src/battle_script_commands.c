@@ -3174,11 +3174,9 @@ static void Cmd_getexp(void)
 
             if (expShareAll)
             {
-                // Gen 6+ style: all non-fainted, non-egg party Pokémon get exp
-                *exp = SAFE_DIV(calculatedExp, viaSentIn);
-                if (*exp == 0)
-                    *exp = 1;
-                gExpShareExp = calculatedExp / PARTY_SIZE;
+                // Gen 6+ style: Pokémon that participated get full exp, others get 50%
+                *exp = calculatedExp; // Full exp for participants
+                gExpShareExp = calculatedExp / 2; // Half exp for non-participants
                 if (gExpShareExp == 0)
                     gExpShareExp = 1;
             }
@@ -3216,7 +3214,26 @@ static void Cmd_getexp(void)
             else
                 holdEffect = ItemId_GetHoldEffect(item);
 
-            if (holdEffect != HOLD_EFFECT_EXP_SHARE && !(gBattleStruct->sentInPokes & 1))
+            // Check if Exp. Share is enabled (Gen 6+ style)
+            bool8 expShareEnabled = (gSaveBlock2Ptr && gSaveBlock2Ptr->optionsExpShare);
+            
+            if (expShareEnabled)
+            {
+                // In Gen 6+ style, skip Pokémon only if they're max level or fainted
+                if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) == MAX_LEVEL
+                 || GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HP) == 0)
+                {
+                    *(&gBattleStruct->sentInPokes) >>= 1;
+                    gBattleScripting.getexpState = 5;
+                    gBattleMoveDamage = 0; // used for exp
+                }
+                else
+                {
+                    // Continue to give exp
+                    gBattleScripting.getexpState = 3; // Skip to exp giving
+                }
+            }
+            else if (holdEffect != HOLD_EFFECT_EXP_SHARE && !(gBattleStruct->sentInPokes & 1))
             {
                 *(&gBattleStruct->sentInPokes) >>= 1;
                 gBattleScripting.getexpState = 5;
@@ -3240,13 +3257,26 @@ static void Cmd_getexp(void)
 
                 if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HP))
                 {
-                    // Give full experience to battlers or Exp. Share holders
-                    if (gBattleStruct->sentInPokes & 1)
-                        gBattleMoveDamage = *exp;
-                    else if (holdEffect == HOLD_EFFECT_EXP_SHARE)
-                        gBattleMoveDamage = gExpShareExp;
+                    bool8 expShareEnabled = (gSaveBlock2Ptr && gSaveBlock2Ptr->optionsExpShare);
+                    
+                    if (expShareEnabled)
+                    {
+                        // Gen 6+ style: Participants get full exp, non-participants get 50%
+                        if (gBattleStruct->sentInPokes & 1)
+                            gBattleMoveDamage = *exp; // Full exp for participants
+                        else
+                            gBattleMoveDamage = gExpShareExp; // 50% exp for non-participants
+                    }
                     else
-                        gBattleMoveDamage = 0;
+                    {
+                        // Classic behavior: Full experience to battlers or Exp. Share holders
+                        if (gBattleStruct->sentInPokes & 1)
+                            gBattleMoveDamage = *exp;
+                        else if (holdEffect == HOLD_EFFECT_EXP_SHARE)
+                            gBattleMoveDamage = gExpShareExp;
+                        else
+                            gBattleMoveDamage = 0;
+                    }
                     if (holdEffect == HOLD_EFFECT_LUCKY_EGG)
                         gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
                     if (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
