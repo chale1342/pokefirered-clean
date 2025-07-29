@@ -82,6 +82,7 @@ BattleScript_SafariNoIncGameStat::
 	displaydexinfo
 BattleScript_CaughtPokemonSkipNewDex::
 	givecaptureexp
+	setbyte gBattleCommunication, 0
 	printstring STRINGID_GIVENICKNAMECAPTURED
 	waitstate
 	setbyte gBattleCommunication, 0
@@ -96,6 +97,11 @@ BattleScript_CaughtPokemonSkipNickname::
 BattleScript_CaughtPokemonDone::
 	setbyte gBattleOutcome, B_OUTCOME_CAUGHT
 	finishturn
+
+BattleScript_CaptureExpGain::
+	printstring STRINGID_PKMNGAINEDEXP
+	waitmessage B_WAIT_TIME_LONG
+	return
 
 BattleScript_OldMan_Pokedude_CaughtMessage::
 	printstring STRINGID_GOTCHAPKMNCAUGHT2

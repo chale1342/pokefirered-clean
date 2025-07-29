@@ -10,6 +10,30 @@
 #include "pokemon_icon.h"
 #include "mail.h"
 #include "event_data.h"
+#include "pokemon_special_anim.h"
+#include "pokemon_storage_system.h"
+#include "pokemon_summary_screen.h"
+#include "task.h"
+#include "naming_screen.h"
+#include "overworld.h"
+#include "party_menu.h"
+// ...existing includes...
+
+// ...existing externs...
+extern const u8 BattleScript_CaughtPokemonDone[];
+extern const u8 BattleScript_CaptureExpGain[];
+#include "global.h"
+#include "battle.h"
+#include "constants/global.h"
+#include "gflib.h"
+#include "item.h"
+#include "util.h"
+#include "random.h"
+#include "pokedex.h"
+#include "money.h"
+#include "pokemon_icon.h"
+#include "mail.h"
+#include "event_data.h"
 #include "strings.h"
 #include "pokemon_special_anim.h"
 #include "pokemon_storage_system.h"
@@ -304,6 +328,7 @@ static void Cmd_snatchsetbattlers(void);
 static void Cmd_removelightscreenreflect(void);
 static void Cmd_handleballthrow(void);
 static void Cmd_givecaughtmon(void);
+static void Cmd_givecaptureexp(void);
 static void Cmd_trysetcaughtmondexflags(void);
 static void Cmd_displaydexinfo(void);
 static void Cmd_trygivecaughtmonnick(void);
@@ -555,13 +580,14 @@ void (* const gBattleScriptingCommandsTable[])(void) =
     Cmd_removelightscreenreflect,                //0xEE
     Cmd_handleballthrow,                         //0xEF
     Cmd_givecaughtmon,                           //0xF0
-    Cmd_trysetcaughtmondexflags,                 //0xF1
-    Cmd_displaydexinfo,                          //0xF2
-    Cmd_trygivecaughtmonnick,                    //0xF3
-    Cmd_subattackerhpbydmg,                      //0xF4
-    Cmd_removeattackerstatus1,                   //0xF5
-    Cmd_finishaction,                            //0xF6
-    Cmd_finishturn,                              //0xF7
+    Cmd_givecaptureexp,                          //0xF1
+    Cmd_trysetcaughtmondexflags,                 //0xF2
+    Cmd_displaydexinfo,                          //0xF3
+    Cmd_trygivecaughtmonnick,                    //0xF4
+    Cmd_subattackerhpbydmg,                      //0xF5
+    Cmd_removeattackerstatus1,                   //0xF6
+    Cmd_finishaction,                            //0xF7
+    Cmd_finishturn,                              //0xF8
 };
 
 struct StatFractions
@@ -9688,6 +9714,57 @@ static void Cmd_givecaughtmon(void)
     gBattleResults.caughtMonSpecies = gBattleMons[gBattlerAttacker ^ BIT_SIDE].species;
     GetMonData(&gEnemyParty[gBattlerPartyIndexes[gBattlerAttacker ^ BIT_SIDE]], MON_DATA_NICKNAME, gBattleResults.caughtMonNick);
 
+    gBattlescriptCurrInstr++;
+}
+
+static void Cmd_givecaptureexp(void)
+{
+    u16 species;
+    u8 level;
+    s32 expCalc;
+    u16 exp;
+    u8 i;
+    u8 activePartyIdx;
+    
+    // Get the caught Pokemon's info from the last battled opponent
+    species = gBattleMons[gBattlerFainted].species;
+    level = gBattleMons[gBattlerFainted].level;
+    
+    // Calculate capture experience (reduced amount compared to battle exp)
+    expCalc = gSpeciesInfo[species].expYield * level / 7; // Match normal defeat EXP formula
+    if (expCalc == 0)
+        expCalc = 1;
+    if (expCalc > 9999) // Cap at 9999 to prevent truncation warnings
+        expCalc = 9999;
+    exp = (u16)expCalc;
+    
+    // Only give EXP to the active battler and those with EXP Share (but not both)
+    // Only give EXP to the active battler for a capture
+    activePartyIdx = gBattlerPartyIndexes[0]; // 0 = player battler
+    if (gBattleScripting.captureExpPartyIndex == 0)
+    {
+        if (GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_SPECIES) != SPECIES_NONE
+            && GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_HP) > 0
+            && GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_LEVEL) < MAX_LEVEL
+            && !GetMonData(&gPlayerParty[activePartyIdx], MON_DATA_IS_EGG))
+        {
+            gBattleStruct->expGetterMonId = activePartyIdx;
+            gBattleStruct->expGetterBattlerId = 0;
+            gActiveBattler = 0;
+            gBattleMoveDamage = exp;
+            gBattleScripting.getexpState = 1;
+            PREPARE_MON_NICK_WITH_PREFIX_BUFFER(gBattleTextBuff1, 0, activePartyIdx);
+            PREPARE_STRING_BUFFER(gBattleTextBuff2, STRINGID_EMPTYSTRING4);
+            PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff3, 5, exp);
+            BattleScriptPushCursor();
+            gBattlescriptCurrInstr = BattleScript_CaptureExpGain;
+            gBattleScripting.captureExpPartyIndex++;
+            return;
+        }
+        gBattleScripting.captureExpPartyIndex++;
+    }
+    // All eligible Pokemon have received EXP
+    gBattleScripting.captureExpPartyIndex = 0;
     gBattlescriptCurrInstr++;
 }
 
